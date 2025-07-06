@@ -10,13 +10,14 @@ def train(model, data_loader, optimizer, tokenizer, epoch, device, scheduler, co
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('loss_itc', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_itm', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
+    # metric_logger.add_meter('loss_cot', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     if config['mlm']:
         metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     header = 'Train Epoch: [{}]'.format(epoch)
     print_freq = 50
 
     if config['eda']:
-        for i, (image, text, text_eda, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        for i, (image, text, text_eda, text_cot, text_neg_cot, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
             image = image.to(device, non_blocking=True)
             idx = idx.to(device, non_blocking=True)
             # text_input = tokenizer(text, padding='longest', max_length=config['max_tokens'],
@@ -25,20 +26,44 @@ def train(model, data_loader, optimizer, tokenizer, epoch, device, scheduler, co
                                    return_tensors="pt").to(device)
             text_input_eda = tokenizer(text_eda, padding='max_length', truncation=True, max_length=config['max_tokens'],
                                        return_tensors="pt").to(device)
+            
+            ###########################################################################
+            text_input_cot = tokenizer(text_cot, padding='max_length', truncation=True, max_length=config['max_tokens'],
+                                   return_tensors="pt").to(device)
+            text_input_neg_cot = tokenizer(text_neg_cot, padding='max_length', truncation=True, max_length=config['max_tokens'],
+                                   return_tensors="pt").to(device)
+            ###########################################################################
+            
+            
             if config['mlm']:
                 text_ids_masked, masked_pos, masked_ids = mlm(text, text_input, tokenizer, device, mask_generator,
                                                               config)
-                loss_itc, loss_itm, loss_mlm = model(image, text_input.input_ids, text_input.attention_mask,
+                
+                
+                ###########################################################################
+                text_ids_masked_cot, masked_pos_cot, masked_ids_cot = mlm(text_cot, text_input_cot, tokenizer, device, mask_generator,
+                                            config)
+                text_ids_masked_neg_cot , masked_pos_neg_cot , masked_ids_neg_cot  = mlm(text_neg_cot , text_input_neg_cot , tokenizer, device, mask_generator,
+                                            config)
+                ###########################################################################
+                
+                loss_itc, loss_itm, loss_mlm, loss_cot = model(image, text_input.input_ids, text_input.attention_mask,
                                                      text_ids_masked=text_ids_masked,
                                                      masked_pos=masked_pos, masked_ids=masked_ids, idx=idx,
                                                      text_ids_eda=text_input_eda.input_ids,
-                                                     text_atts_eda=text_input_eda.attention_mask)
-                loss = loss_itc + loss_itm + loss_mlm
+                                                     text_atts_eda=text_input_eda.attention_mask,
+                                                     text_ids_cot=text_input_cot.input_ids, text_atts_cot=text_input_cot.attention_mask,
+                                                     text_ids_neg_cot=text_input_neg_cot.input_ids, text_atts_neg_cot=text_input_neg_cot.attention_mask,
+                                                     text_ids_masked_cot=text_ids_masked_cot, masked_pos_cot=masked_pos_cot, masked_ids_cot=masked_ids_cot,
+                                                     text_ids_masked_neg_cot=text_ids_masked_neg_cot, masked_pos_neg_cot=masked_pos_neg_cot, masked_ids_neg_cot=masked_ids_neg_cot)
+                loss = loss_itc + loss_itm + loss_mlm + 0.7 * loss_cot
             else:
-                loss_itc, loss_itm = model(image, text_input.input_ids, text_input.attention_mask, idx=idx,
+                loss_itc, loss_itm, loss_cot = model(image, text_input.input_ids, text_input.attention_mask, idx=idx,
                                            text_ids_eda=text_input_eda.input_ids,
-                                           text_atts_eda=text_input_eda.attention_mask)
-                loss = loss_itc + loss_itm
+                                           text_atts_eda=text_input_eda.attention_mask,
+                                           text_ids_cot=text_input_cot.input_ids, text_atts_cot=text_input_cot.attention_mask,
+                                           text_ids_neg_cot=text_input_neg_cot.input_ids, text_atts_neg_cot=text_input_neg_cot.attention_mask,)
+                loss = loss_itc + loss_itm + 0.7 * loss_cot
 
             optimizer.zero_grad()
             loss.backward()
@@ -51,7 +76,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, device, scheduler, co
                 metric_logger.update(loss_mlm=loss_mlm.item())
             metric_logger.update(lr=optimizer.param_groups[0]["lr"])
     else:
-        for i, (image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        for i, (image, text, text_cot, text_neg_cot, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
             image = image.to(device, non_blocking=True)
             idx = idx.to(device, non_blocking=True)
             # text_input = tokenizer(text, padding='longest', max_length=config['max_tokens'],
@@ -62,15 +87,21 @@ def train(model, data_loader, optimizer, tokenizer, epoch, device, scheduler, co
             if config['mlm']:
                 text_ids_masked, masked_pos, masked_ids = mlm(text, text_input, tokenizer, device, mask_generator,
                                                               config)
-                loss_itc, loss_itm, loss_mlm = model(image, text_input.input_ids,
+                loss_itc, loss_itm, loss_mlm, loss_cot = model(image, text_input.input_ids,
                                                      text_input.attention_mask,
                                                      text_ids_masked=text_ids_masked,
                                                      masked_pos=masked_pos, masked_ids=masked_ids,
-                                                     idx=idx)
-                loss = loss_itc + loss_itm + loss_mlm
+                                                     idx=idx,
+                                                     text_ids_cot=text_input_cot.input_ids, text_atts_cot=text_input_cot.attention_mask,
+                                                     text_ids_neg_cot=text_input_neg_cot.input_ids, text_atts_neg_cot=text_input_neg_cot.attention_mask,
+                                                     text_ids_masked_cot=text_ids_masked_cot, masked_pos_cot=masked_pos_cot, masked_ids_cot=masked_ids_cot,
+                                                     text_ids_masked_neg_cot=text_ids_masked_neg_cot, masked_pos_neg_cot=masked_pos_neg_cot, masked_ids_neg_cot=masked_ids_neg_cot)
+                loss = loss_itc + loss_itm + loss_mlm + 0.3 * loss_cot
             else:
-                loss_itc, loss_itm = model(image, text_input.input_ids, text_input.attention_mask, idx=idx)
-                loss = loss_itc + loss_itm
+                loss_itc, loss_itm, loss_cot = model(image, text_input.input_ids, text_input.attention_mask, idx=idx,
+                                           text_ids_cot=text_input_cot.input_ids, text_atts_cot=text_input_cot.attention_mask,
+                                           text_ids_neg_cot=text_input_neg_cot.input_ids, text_atts_neg_cot=text_input_neg_cot.attention_mask,)
+                loss = loss_itc + loss_itm + 0.3 * loss_cot
 
             optimizer.zero_grad()
             loss.backward()
@@ -79,6 +110,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, device, scheduler, co
 
             metric_logger.update(loss_itc=loss_itc.item())
             metric_logger.update(loss_itm=loss_itm.item())
+            # metric_logger.update(loss_cot=loss_cot.item())
             if config['mlm']:
                 metric_logger.update(loss_mlm=loss_mlm.item())
             metric_logger.update(lr=optimizer.param_groups[0]["lr"])

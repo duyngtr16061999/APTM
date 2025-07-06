@@ -1,12 +1,12 @@
 import os
 import argparse
-
-
+import nltk
+nltk.download('wordnet')
 # Set it correctly for distributed training across nodes
 NNODES = 1  # e.g. 1/2/3/4
 NPROC_PER_NODE = 4  # e.g. 4 gpus
 MASTER_ADDR = '127.0.0.1'
-MASTER_PORT = 3000  # 0~65536
+MASTER_PORT = 3009  # 0~65536
 NODE_RANK = 0  # e.g. 0/1/2
 
 print("NNODES, ", NNODES)
@@ -18,37 +18,58 @@ print("NODE_RANK, ", NODE_RANK)
 
 def get_dist_launch(args):  # some examples
     if args.dist == 'f4':
-        return "CUDA_VISIBLE_DEVICES=0,1,2,3 WORLD_SIZE=4 python3 -m torch.distributed.launch --nproc_per_node=4 " \
+        return "CUDA_VISIBLE_DEVICES=0,1,2,3 WORLD_SIZE=4 python -m torch.distributed.launch --nproc_per_node=4 " \
                "--nnodes=1 --master_port={:}".format(MASTER_PORT)
 
     elif args.dist == 'f2':
-        return "CUDA_VISIBLE_DEVICES=0,1 WORLD_SIZE=2 python3 -m torch.distributed.launch --nproc_per_node=2 " \
+        return "CUDA_VISIBLE_DEVICES=0,1 WORLD_SIZE=2 python -m torch.distributed.launch --nproc_per_node=2 " \
                "--nnodes=1 --master_port={:}".format(MASTER_PORT)
+               
+    elif args.dist == 'f2_57':
+        return "CUDA_VISIBLE_DEVICES=5,7 WORLD_SIZE=2 python -m torch.distributed.launch --nproc_per_node=2 " \
+               "--nnodes=1 --master_port=3010"
+               
+               
+    elif args.dist == 'f4_tune1':
+        return "CUDA_VISIBLE_DEVICES=4,5,6,7 WORLD_SIZE=4 python -m torch.distributed.launch --nproc_per_node=4 " \
+               "--nnodes=1 --master_port=3025"
+
+    elif args.dist == 'f4_tune0':
+        return "CUDA_VISIBLE_DEVICES=0,1,2,3 WORLD_SIZE=4 python -m torch.distributed.launch --nproc_per_node=4 " \
+               "--nnodes=1 --master_port=3026"
+               
+    elif args.dist == 'f2_tune1':
+        return "CUDA_VISIBLE_DEVICES=5,7 WORLD_SIZE=2 python -m torch.distributed.launch --nproc_per_node=2 " \
+               "--nnodes=1 --master_port=3039"
+               
+    elif args.dist == 'f1_tune1':
+        return "CUDA_VISIBLE_DEVICES=6 WORLD_SIZE=1 python -m torch.distributed.launch --nproc_per_node=1 " \
+               "--nnodes=1 --master_port=3040"
 
     elif args.dist == 'l2':
-        return "CUDA_VISIBLE_DEVICES=2,3 WORLD_SIZE=2 python3 -m torch.distributed.launch --nproc_per_node=2 " \
+        return "CUDA_VISIBLE_DEVICES=2,3 WORLD_SIZE=2 python -m torch.distributed.launch --nproc_per_node=2 " \
                "--nnodes=1 --master_port={:}".format(MASTER_PORT)
 
     elif args.dist == 'f-0':
-        return "CUDA_VISIBLE_DEVICES=1,2,3 WORLD_SIZE=3 python3 -m torch.distributed.launch --nproc_per_node=3 " \
+        return "CUDA_VISIBLE_DEVICES=1,2,3 WORLD_SIZE=3 python -m torch.distributed.launch --nproc_per_node=3 " \
                "--nnodes=1 "
 
     elif args.dist == 'f-1':
-        return "CUDA_VISIBLE_DEVICES=0,2,3 WORLD_SIZE=3 python3 -m torch.distributed.launch --nproc_per_node=3 " \
+        return "CUDA_VISIBLE_DEVICES=0,2,3 WORLD_SIZE=3 python -m torch.distributed.launch --nproc_per_node=3 " \
                "--nnodes=1 "
 
     elif args.dist == 'f-2':
-        return "CUDA_VISIBLE_DEVICES=0,1,3 WORLD_SIZE=3 python3 -m torch.distributed.launch --nproc_per_node=3 " \
+        return "CUDA_VISIBLE_DEVICES=0,1,3 WORLD_SIZE=3 python -m torch.distributed.launch --nproc_per_node=3 " \
                "--nnodes=1 "
 
     elif args.dist == 'f-3':
-        return "CUDA_VISIBLE_DEVICES=0,1,2 WORLD_SIZE=3 python3 -m torch.distributed.launch --nproc_per_node=3 " \
+        return "CUDA_VISIBLE_DEVICES=0,1,2 WORLD_SIZE=3 python -m torch.distributed.launch --nproc_per_node=3 " \
                "--nnodes=1 "
 
     elif args.dist.startswith('gpu'):  # use one gpu, --dist "gpu0"
         num = int(args.dist[3:])
         assert 0 <= num <= 3
-        return "CUDA_VISIBLE_DEVICES={:} WORLD_SIZE=1 python3 -m torch.distributed.launch --nproc_per_node=1 " \
+        return "CUDA_VISIBLE_DEVICES={:} WORLD_SIZE=1 python -m torch.distributed.launch --nproc_per_node=1 " \
                "--nnodes=1 --master_port={:} ".format(num, MASTER_PORT)
 
     else:

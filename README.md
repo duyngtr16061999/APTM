@@ -120,7 +120,9 @@ And organize those datasets in `images` folder as follows:
 We pretrain our APTM using MALS as follows：
 
 ```
-python3 run.py --task "itr_gene" --dist "f4" --output_dir "output/pretrained"
+CUDA_VISIBLE_DEVICES=0,1 python run.py --task "itr_gene" --dist "f2" --output_dir "output/pretrained"
+
+CUDA_VISIBLE_DEVICES=5,7 python run.py --task "itr_gene" --dist "f2_57" --output_dir "output/pretrained2"
 ```
 
 ### Fine-tuning
@@ -128,12 +130,94 @@ We fine-tune our APTM using existing text-based Person Reid datasets. Performanc
 
 ```
 python3 run.py --task "itr_cuhk" --dist "f4" --output_dir "output/ft_cuhk" --checkpoint "output/pretrained/checkpoint_31.pth"
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_cuhk" --dist "f4_tune1" --output_dir "output/ft_cuhk" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/pretrained/checkpoint_31.pth"
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_cuhk" --dist "f4_tune1" --output_dir "output/ft_cuhk1" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/pretrained/checkpoint_31.pth"
+
+CUDA_VISIBLE_DEVICES=0,1,2,3 python run.py --task "itr_cuhk" --dist "f4_tune0" --output_dir "output/ft_cuhk" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/pretrained/checkpoint_31.pth"
+
+CUDA_VISIBLE_DEVICES=5,7 python run.py --task "itr_cuhk" --dist "f2_tune1" --output_dir "output/ft_cuhk" --checkpoint "./cp/APTM/checkpoints/pretrained/checkpoint_31.pth"
+
+CUDA_VISIBLE_DEVICES=5,7 python run.py --task "itr_cuhk" --dist "f1_tune1" --output_dir "output/ft_cuhk" --checkpoint "./cp/APTM/checkpoints/pretrained/checkpoint_31.pth"
+
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_icfg" --dist "f4_tune1" --output_dir "output/ft_icfg" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/pretrained/checkpoint_31.pth"
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_rstp" --dist "f4_tune1" --output_dir "output/ft_rstp" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/pretrained/checkpoint_31.pth"
+
 ```
 
 ### Evaluation
 
 ```
 python3 run.py --task "itr_cuhk" --evaluate --dist "f4" --output_dir "output/ft_cuhk/test" --checkpoint "output/ft_cuhk/checkpoint_best.pth"
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_cuhk" --evaluate --dist "f4_tune1" --output_dir "output/ft_cuhk/test" --checkpoint "output/ft_cuhk/checkpoint_best.pth"
+
+test_result:
++------+--------+--------+--------+--------+--------+
+| task |   R1   |   R5   |  R10   |  mAP   |  mINP  |
++------+--------+--------+--------+--------+--------+
+| t2i  | 76.137 | 90.286 | 94.120 | 66.651 | 49.366 |
++------+--------+--------+--------+--------+--------+
+
+idea1 only pos ft_cuhk:
++------+--------+--------+--------+--------+--------+
+| task |   R1   |   R5   |  R10   |  mAP   |  mINP  |
++------+--------+--------+--------+--------+--------+
+| t2i  | 75.309 | 90.026 | 94.055 | 66.762 | 49.991 |
++------+--------+--------+--------+--------+--------+
+idea1 ft_cuhk1: loss_itc + loss_itm + loss_mlm + 0.5 * loss_cot
+
+
+idea1 ft_cuhk2: loss_itc + loss_itm + loss_mlm + 0.5 * loss_cot
+
+
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_icfg" --evaluate --dist "f4_tune1" --output_dir "output/ft_icfg/test" --checkpoint "output/ft_icfg/checkpoint_best.pth"
+
+test_result:
++------+--------+--------+--------+--------+-------+
+| task |   R1   |   R5   |  R10   |  mAP   |  mINP |
++------+--------+--------+--------+--------+-------+
+| t2i  | 68.511 | 82.905 | 87.858 | 41.286 | 9.252 |
++------+--------+--------+--------+--------+-------+
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_rstp" --evaluate --dist "f4_tune1" --output_dir "output/ft_rstp/test" --checkpoint "output/ft_rstp/checkpoint_best.pth"
+
+test_result:
++------+--------+--------+--------+--------+--------+
+| task |   R1   |   R5   |  R10   |  mAP   |  mINP  |
++------+--------+--------+--------+--------+--------+
+| t2i  | 67.100 | 86.300 | 91.150 | 51.876 | 27.331 |
++------+--------+--------+--------+--------+--------+
+
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_cuhk" --evaluate --dist "f4_tune1" --output_dir "output/ft_cuhk/test" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/ft_cuhk/checkpoint_best.pth"
+
++------+--------+--------+--------+--------+--------+
+| task |   R1   |   R5   |  R10   |  mAP   |  mINP  |
++------+--------+--------+--------+--------+--------+
+| t2i  | 75.341 | 89.409 | 93.616 | 65.772 | 48.302 |
++------+--------+--------+--------+--------+--------+
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_icfg" --evaluate --dist "f4_tune1" --output_dir "output/ft_icfg/test" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/ft_icfg/checkpoint_best.pth"
+
++------+--------+--------+--------+--------+-------+
+| task |   R1   |   R5   |  R10   |  mAP   |  mINP |
++------+--------+--------+--------+--------+-------+
+| t2i  | 67.337 | 82.013 | 86.815 | 41.446 | 9.402 |
++------+--------+--------+--------+--------+-------+
+
+CUDA_VISIBLE_DEVICES=4,5,6,7 python run.py --task "itr_rstp" --evaluate --dist "f4_tune1" --output_dir "output/ft_rstp/test" --checkpoint "/data/congduy/Feb2025/MLLMforHuman/new_code/APTM/cp/APTM/checkpoints/ft_rstp/checkpoint_best.pth"
+
++------+--------+--------+--------+--------+--------+
+| task |   R1   |   R5   |  R10   |  mAP   |  mINP  |
++------+--------+--------+--------+--------+--------+
+| t2i  | 66.350 | 85.000 | 90.500 | 53.244 | 30.077 |
++------+--------+--------+--------+--------+--------+
+
 ```
 
 ## Reference

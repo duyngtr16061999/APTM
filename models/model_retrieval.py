@@ -29,7 +29,11 @@ class APTM_Retrieval(APTM):
 
     def forward(self, image, text_ids, text_atts, text_ids_masked=None, masked_pos=None, masked_ids=None,
                 idx=None, attr_text_ids=None, attr_text_atts=None, attr_text_ids_masked=None,
-                attr_masked_pos=None, attr_masked_ids=None, label=None, text_ids_eda=None, text_atts_eda=None):
+                attr_masked_pos=None, attr_masked_ids=None, label=None, text_ids_eda=None, text_atts_eda=None,
+                text_ids_cot=None, text_atts_cot=None, text_ids_neg_cot=None, text_atts_neg_cot=None,
+                text_ids_masked_cot=None, masked_pos_cot=None, masked_ids_cot=None, text_ids_masked_neg_cot=None, masked_pos_neg_cot=None, masked_ids_neg_cot=None,
+                # text_ids_neg=None, text_atts_neg=None,
+                ):
 
         if self.pa100k_only_img_classifier:
             image_embeds = self.vision_encoder(image)
@@ -83,7 +87,32 @@ class APTM_Retrieval(APTM):
         loss_itc = self.get_contrastive_loss(image_feat, text_feat, idx=idx)
         loss_itm = self.get_matching_loss(image_embeds, image_atts, image_feat,
                                           text_embeds, text_atts, text_feat, idx=idx)
+        
+        loss_cot = None
+        if text_ids_cot is not None and text_ids_neg_cot is not None:
+            
+            text_cot_embeds = self.get_text_embeds(text_ids_cot, text_atts_cot)
+            image_feat_cot, text_feat_cot = self.get_features(image_embeds, text_cot_embeds)
 
+            loss_itc_cot = self.get_contrastive_loss(image_feat_cot, text_feat_cot, idx=idx)
+            loss_itm_cot = self.get_matching_loss(image_embeds, image_atts, image_feat_cot,
+                                            text_cot_embeds, text_atts_cot, text_feat_cot, idx=idx)
+            # import pdb; pdb.set_trace()
+            
+            text_neg_cot_embeds = self.get_text_embeds(text_ids_neg_cot, text_atts_neg_cot)
+            image_feat_neg_cot, text_feat_neg_cot = self.get_features(image_embeds, text_neg_cot_embeds)
+            
+            loss_itc_neg_cot = self.get_contrastive_loss(image_feat_neg_cot, text_feat_neg_cot, idx=idx)
+            loss_itm_neg_cot = self.get_matching_loss(image_embeds, image_atts, image_feat_neg_cot,
+                                            text_neg_cot_embeds, text_atts_neg_cot, text_feat_neg_cot, idx=idx)
+            loss_cot = loss_itc_cot + loss_itm_cot + loss_itc_neg_cot + loss_itm_neg_cot
+            if self.mlm:
+                loss_mlm_cot = self.get_mlm_loss(text_ids_masked_cot, text_atts_cot, image_embeds, image_atts, masked_pos_cot,
+                                         masked_ids_cot)
+                loss_mlm_neg_cot = self.get_mlm_loss(text_ids_masked_neg_cot, text_atts_neg_cot, image_embeds, image_atts, masked_pos_neg_cot,
+                                         masked_ids_neg_cot)
+                loss_cot += loss_mlm_cot + loss_mlm_neg_cot
+                
         # eda
         if self.eda:
             text_embeds_eda = self.get_text_embeds(text_ids_eda, text_atts_eda)
@@ -97,6 +126,11 @@ class APTM_Retrieval(APTM):
         if self.mlm:
             loss_mlm = self.get_mlm_loss(text_ids_masked, text_atts, image_embeds, image_atts, masked_pos,
                                          masked_ids)
+            if loss_cot is not None:
+                return loss_itc, loss_itm, loss_mlm, loss_cot
             return loss_itc, loss_itm, loss_mlm
+        
         else:
+            if loss_cot is not None:
+                return loss_itc, loss_itm, loss_cot
             return loss_itc, loss_itm

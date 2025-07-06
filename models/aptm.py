@@ -506,3 +506,7 @@ class APTM(nn.Module):
                                  labels=masked_ids_pos,
                                  masked_pos=masked_pos_pos).loss
         return loss
+
+    ### My new idea
+    def cot_contrastive_loss(self, text):
+        pass

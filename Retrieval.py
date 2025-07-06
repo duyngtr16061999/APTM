@@ -16,7 +16,8 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 
 from models.model_retrieval import APTM_Retrieval
-from models.tokenization_bert import BertTokenizer
+# from models.tokenization_bert import BertTokenizer
+from transformers import BertTokenizer
 
 import utils
 from dataset import create_dataset, create_sampler, create_loader
@@ -33,6 +34,12 @@ from reTools import evaluation_attr_only_img_classifier, itm_eval_attr_only_img_
 
 
 def main(args, config):
+    print("="*50)
+    print(args)
+    print("="*50)
+    print(config)
+    print("="*50)
+    
     utils.init_distributed_mode(args)
     device = torch.device(args.device)
     world_size = utils.get_world_size()
@@ -49,7 +56,8 @@ def main(args, config):
     cudnn.benchmark = True
 
     print("Creating model", flush=True)
-    tokenizer = BertTokenizer.from_pretrained(config['text_encoder'])
+    # tokenizer = BertTokenizer.from_pretrained(config['text_encoder'])
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = APTM_Retrieval(config=config)
     if config['load_pretrained']:
         model.load_pretrained(args.checkpoint, config, is_eval=args.evaluate)
